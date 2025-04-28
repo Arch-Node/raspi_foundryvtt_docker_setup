@@ -1,0 +1,13 @@
+# Ignore environment configs, logs, backups, plots, pycache
+
+env/*.env
+logs/*
+!logs/.gitkeep
+backups/*
+!backups/.gitkeep
+plots/*
+!plots/.gitkeep
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

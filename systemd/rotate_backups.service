@@ -1,0 +1,7 @@
+[Unit]
+Description=Rotate Old Backups
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/raspi_foundry_setup/scripts/rotate_backups.sh

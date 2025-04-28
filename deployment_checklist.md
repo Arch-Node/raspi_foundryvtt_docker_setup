@@ -1,0 +1,3 @@
+# Deployment Checklist
+
+Steps to set up this server properly...

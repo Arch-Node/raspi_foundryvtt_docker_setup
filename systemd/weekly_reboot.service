@@ -1,0 +1,7 @@
+[Unit]
+Description=Scheduled Reboot
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/shutdown -r now

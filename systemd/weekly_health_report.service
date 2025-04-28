@@ -1,0 +1,7 @@
+[Unit]
+Description=Weekly Server Health Report
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/pi/raspi_foundry_setup/python/weekly_health_report.py
