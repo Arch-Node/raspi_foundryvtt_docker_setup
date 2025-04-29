@@ -1,13 +1,24 @@
-# Ignore environment configs, logs, backups, plots, pycache
-
+# Environment configuration (secrets)
 env/*.env
-logs/*
-!logs/.gitkeep
-backups/*
-!backups/.gitkeep
-plots/*
-!plots/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Backup data
+backups/
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Editor temp files
+*.swp
+*.swo
+
+# IDE configurations
+.idea/
+.vscode/
+
+# OS metadata files
 .DS_Store
-Thumbs.db
