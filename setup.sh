@@ -178,24 +178,116 @@ check_and_install_python_package "dotenv"
 prompt_for_envs
 
 # Source envs
+echo "$(timestamp) Loading environment configurations..." | tee -a "$INSTALL_LOG"
 source ./env/drive_mount.env
 source ./env/backup.env
 source ./env/signal.env
 source ./env/duckdns.env
 source ./env/foundry.env
 
-echo "$(timestamp) Running installation scripts..." | tee -a "$INSTALL_LOG"
-./scripts/install_docker.sh
-./scripts/install_nginx.sh
-./scripts/setup_duckdns.sh
-./scripts/mount_drive.sh
+# Install Python requirements
+echo "$(timestamp) Installing Python requirements..." | tee -a "$INSTALL_LOG"
+pip3 install -r python/requirements.txt | tee -a "$INSTALL_LOG"
 
-if ! command -v signal-cli >/dev/null 2>&1; then
-  echo "$(timestamp) Installing Signal CLI..." | tee -a "$INSTALL_LOG"
-  ./scripts/install_signal_cli.sh
+# Make scripts executable
+echo "$(timestamp) Setting script permissions..." | tee -a "$INSTALL_LOG"
+chmod +x scripts/*.sh
+chmod +x foundry.sh
+chmod +x python/*.py
+
+echo "$(timestamp) Running installation scripts..." | tee -a "$INSTALL_LOG"
+
+# Install Docker with error handling
+if ! ./scripts/install_docker.sh; then
+    echo "$(timestamp) ERROR: Docker installation failed!" | tee -a "$INSTALL_LOG"
+    exit 1
 fi
 
-echo "$(timestamp) Deploying Foundry container..." | tee -a "$INSTALL_LOG"
-./scripts/install_foundry_docker.sh
+# Install Nginx with error handling
+if ! ./scripts/install_nginx.sh; then
+    echo "$(timestamp) ERROR: Nginx installation failed!" | tee -a "$INSTALL_LOG"
+    exit 1
+fi
 
-echo "$(timestamp) Setup complete. Enable systemd services if needed." | tee -a "$INSTALL_LOG"
+# Setup DuckDNS
+if ! ./scripts/setup_duckdns.sh; then
+    echo "$(timestamp) ERROR: DuckDNS setup failed!" | tee -a "$INSTALL_LOG"
+    exit 1
+fi
+
+# Mount drive if enabled
+if [[ "$MOUNT_DRIVE_ENABLED" == "true" ]]; then
+    if ! ./scripts/mount_drive.sh; then
+        echo "$(timestamp) ERROR: Drive mounting failed!" | tee -a "$INSTALL_LOG"
+        exit 1
+    fi
+fi
+
+# Install Signal CLI
+if ! command -v signal-cli >/dev/null 2>&1; then
+    echo "$(timestamp) Installing Signal CLI..." | tee -a "$INSTALL_LOG"
+    if ! ./scripts/install_signal_cli.sh; then
+        echo "$(timestamp) ERROR: Signal CLI installation failed!" | tee -a "$INSTALL_LOG"
+        exit 1
+    fi
+fi
+
+# Deploy Foundry container
+echo "$(timestamp) Deploying Foundry container..." | tee -a "$INSTALL_LOG"
+if ! ./scripts/install_foundry_docker.sh; then
+    echo "$(timestamp) ERROR: Foundry container deployment failed!" | tee -a "$INSTALL_LOG"
+    exit 1
+fi
+
+# Install and enable systemd services
+echo "$(timestamp) Installing systemd services..." | tee -a "$INSTALL_LOG"
+sudo cp systemd/*.service /etc/systemd/system/
+sudo cp systemd/*.timer /etc/systemd/system/
+
+# Reload systemd and enable services
+sudo systemctl daemon-reload
+
+echo "$(timestamp) Enabling systemd timers..." | tee -a "$INSTALL_LOG"
+sudo systemctl enable check_and_update_foundry.timer
+sudo systemctl enable rotate_backups.timer
+sudo systemctl enable weekly_health_report.timer
+sudo systemctl enable weekly_reboot.timer
+
+echo "$(timestamp) Starting systemd timers..." | tee -a "$INSTALL_LOG"
+sudo systemctl start check_and_update_foundry.timer
+sudo systemctl start rotate_backups.timer
+sudo systemctl start weekly_health_report.timer
+sudo systemctl start weekly_reboot.timer
+
+# Final validation
+echo "$(timestamp) Running final validation..." | tee -a "$INSTALL_LOG"
+
+# Check if Docker is running
+if ! docker ps >/dev/null 2>&1; then
+    echo "$(timestamp) ERROR: Docker is not running properly!" | tee -a "$INSTALL_LOG"
+    exit 1
+fi
+
+# Check if Foundry container is running
+CONTAINER_NAME="foundryvtt-${FOUNDRY_IMAGE##*:}"
+if ! docker ps | grep -q "$CONTAINER_NAME"; then
+    echo "$(timestamp) ERROR: Foundry container is not running!" | tee -a "$INSTALL_LOG"
+    exit 1
+fi
+
+# Display success message and next steps
+echo "$(timestamp) ========================================" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) 🎉 SETUP COMPLETE! 🎉" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) ========================================" | tee -a "$INSTALL_LOG"
+echo "$(timestamp)" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) FoundryVTT is now running on port $FOUNDRY_PORT_PUBLIC" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) Container name: $CONTAINER_NAME" | tee -a "$INSTALL_LOG"
+echo "$(timestamp)" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) Next steps:" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) 1. Access FoundryVTT at: http://$(hostname -I | awk '{print $1}'):$FOUNDRY_PORT_PUBLIC" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) 2. Use './foundry.sh' for container management" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) 3. Check systemd timer status: sudo systemctl list-timers" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) 4. Monitor logs in the 'logs/' directory" | tee -a "$INSTALL_LOG"
+echo "$(timestamp)" | tee -a "$INSTALL_LOG"
+echo "$(timestamp) All systemd services have been enabled and started." | tee -a "$INSTALL_LOG"
+echo "$(timestamp) Setup complete!" | tee -a "$INSTALL_LOG"
