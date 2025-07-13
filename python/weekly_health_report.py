@@ -54,11 +54,11 @@ def get_latest_backup_info():
         return f"Error checking backups: {e}"
 
 def get_foundry_version():
-    result = subprocess.run("docker inspect foundryvtt --format '{{ .Config.Image }}'", shell=True, capture_output=True, text=True)
+    result = subprocess.run("podman inspect foundryvtt --format '{{ .Config.Image }}'", shell=True, capture_output=True, text=True)
     if result.returncode == 0:
         return f"Foundry Container Image: {result.stdout.strip()}"
     else:
-        return "Unable to get FoundryVTT container info."
+        return "Could not determine Foundry container image."
 
 def build_weekly_report():
     parts = [

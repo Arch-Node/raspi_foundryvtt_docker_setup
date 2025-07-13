@@ -51,7 +51,9 @@ load_env_files()
 
 # Configuration with defaults
 FOUNDRY_VOLUME = os.getenv("FOUNDRY_VOLUME", "foundry_data")
-FOUNDATION_SOURCE = f"/var/lib/docker/volumes/{FOUNDRY_VOLUME}/_data"
+# Use Podman volume path
+PODMAN_VOLUME_PATH = f"/var/lib/containers/storage/volumes/{FOUNDRY_VOLUME}/_data"
+FOUNDATION_SOURCE = PODMAN_VOLUME_PATH
 BACKUP_BASE = os.getenv("MOUNT_POINT", "/backups")
 RETENTION_DAYS = int(os.getenv("BACKUP_RETENTION_DAYS", 14))
 BACKUP_TYPE = os.getenv("BACKUP_TYPE", "full")  # full, incremental
@@ -107,10 +109,10 @@ def calculate_checksum(filepath):
         return None
 
 def is_foundry_container_running():
-    """Check if FoundryVTT container is running"""
+    """Check if FoundryVTT container is running (Podman)"""
     try:
         result = subprocess.run(
-            ["docker", "ps", "--filter", f"volume={FOUNDRY_VOLUME}", "--format", "{{.Names}}"],
+            ["podman", "ps", "--filter", f"volume={FOUNDRY_VOLUME}", "--format", "{{.Names}}"],
             capture_output=True, text=True, check=True
         )
         return bool(result.stdout.strip())
@@ -118,28 +120,27 @@ def is_foundry_container_running():
         return False
 
 def pause_foundry_container():
-    """Pause FoundryVTT container for consistent backup"""
+    """Pause FoundryVTT container for consistent backup (Podman)"""
     try:
         result = subprocess.run(
-            ["docker", "ps", "--filter", f"volume={FOUNDRY_VOLUME}", "--format", "{{.Names}}"],
+            ["podman", "ps", "--filter", f"volume={FOUNDRY_VOLUME}", "--format", "{{.Names}}"],
             capture_output=True, text=True, check=True
         )
         container_name = result.stdout.strip()
-        
         if container_name:
             log_message("INFO", f"Pausing container {container_name} for backup...")
-            subprocess.run(["docker", "pause", container_name], check=True)
+            subprocess.run(["podman", "pause", container_name], check=True)
             return container_name
     except Exception as e:
         log_message("WARNING", f"Could not pause container: {e}")
     return None
 
 def resume_foundry_container(container_name):
-    """Resume FoundryVTT container after backup"""
+    """Resume FoundryVTT container after backup (Podman)"""
     if container_name:
         try:
             log_message("INFO", f"Resuming container {container_name}...")
-            subprocess.run(["docker", "unpause", container_name], check=True)
+            subprocess.run(["podman", "unpause", container_name], check=True)
         except Exception as e:
             log_message("ERROR", f"Failed to resume container {container_name}: {e}")
 

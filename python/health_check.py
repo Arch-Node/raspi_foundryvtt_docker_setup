@@ -35,7 +35,7 @@ def send_signal_alert(message):
         log("Failed to send Signal alert.")
 
 def check_foundry_container():
-    result = subprocess.run("docker ps --filter 'name=foundryvtt' --filter 'status=running' -q", shell=True, capture_output=True, text=True)
+    result = subprocess.run("podman ps --filter 'name=foundryvtt' --filter 'status=running' -q", shell=True, capture_output=True, text=True)
     return bool(result.stdout.strip())
 
 def check_web_server(port=29000):
